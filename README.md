@@ -6,7 +6,7 @@
 [![Model](https://img.shields.io/badge/🤗%20Weights-ObjectForesight--EPIC--DiT-yellow)](https://huggingface.co/raivn/ObjectForesight-EPIC-DiT)
 [![Dataset](https://img.shields.io/badge/🤗%20Dataset-ObjectForesight--EPIC-yellow)](https://huggingface.co/datasets/raivn/ObjectForesight-EPIC)
 
-ObjectForesight is a 3D object-centric dynamics model: given a single egocentric observation — a scene point cloud and an object's recent 6-DoF pose — it predicts the object's **H future 6-DoF poses**. This repo is the **model code** (training, evaluation, inference). The data-curation pipeline that produces the training data lives in a separate repository, and the extracted dataset + pretrained weights are released on Hugging Face.
+ObjectForesight is a 3D object-centric dynamics model: given a single egocentric observation — a scene point cloud and an object's recent 6-DoF pose — it predicts the object's **H future 6-DoF poses**. This repo is the **model code** (training, evaluation, inference). The data-curation pipeline that produces the training data lives in a separate repo, [RustinS/ObjectForesight-Data](https://github.com/RustinS/ObjectForesight-Data); the extracted dataset and pretrained weights are on Hugging Face.
 
 ![Architecture](architecture.png)
 
@@ -63,7 +63,7 @@ The main EPIC-KITCHENS model (**ObjectForesight-DiT**) is on Hugging Face:
 ```bash
 huggingface-cli download raivn/ObjectForesight-EPIC-DiT --local-dir checkpoints/of-epic-dit
 # -> best.pt (repo-native) and model.safetensors (pickle-free)
-uv run python -m src.eval_main eval.ckpt=checkpoints/of-epic-dit/best.pt
+uv run python -m src.eval_main --config-name epic_eval eval.ckpt=checkpoints/of-epic-dit/best.pt
 ```
 
 ## Data
@@ -89,8 +89,8 @@ uv run python -m src.train_main data.dataset_root=/path/to/manip_data
 uv run torchrun --standalone --nproc_per_node=8 -m src.train_main
 bash scripts/submit.sh --nodes 1 --gpus-per-node 8
 
-# Evaluate / infer / visualize with a checkpoint
-uv run python -m src.eval_main  eval.ckpt=checkpoints/of-epic-dit/best.pt
+# Evaluate (paper-style filtered eval) / infer / visualize with a checkpoint
+uv run python -m src.eval_main  --config-name epic_eval eval.ckpt=checkpoints/of-epic-dit/best.pt
 uv run python -m src.infer_main infer.ckpt=checkpoints/of-epic-dit/best.pt
 uv run python -m src.viz_main   viz.save_dir=outputs/overlays
 
