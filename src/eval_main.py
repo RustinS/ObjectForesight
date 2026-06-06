@@ -863,6 +863,7 @@ def main(cfg: DictConfig) -> None:
         epoch_table(title=f"Evaluation Results ({os.path.basename(ckpt_path)})", metrics=display, prec=int(cfg.log.precision))
 
         out_json = os.path.join(cfg.train.out_dir, "eval_metrics.json")
+        os.makedirs(cfg.train.out_dir, exist_ok=True)
         with open(out_json, "w") as f:
             json.dump(agg_metrics, f, indent=2)
         print(f"[dim]Saved metrics → {out_json}[/dim]")

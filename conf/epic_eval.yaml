@@ -1,229 +1,24 @@
-# Config for loading old EPIC-3DManip checkpoint (dit_epic_16gpus_70split_iou_drop_0.1)
-# This matches the architecture used during training
+# Evaluation config for the released ObjectForesight-DiT (EPIC) model.
+#
+# Inherits the full training/model config (conf/epic.yaml) so the architecture
+# always matches the released checkpoint, and overrides only eval-time settings:
+# paper-style post-training filtering (mean-IoU >= 0.6, min translation 0.01 m)
+# and sampler-based (DDIM) evaluation with canonicalized SE(3) metrics.
+#
+# Usage:
+#   uv run python -m src.eval_main --config-name epic_eval \
+#       eval.ckpt=checkpoints/of-epic-dit/best.pt data.dataset_root=./manip_data
+
+defaults:
+  - epic
 
 data:
-  dataset_name: epic
-  dataset_root: "./manip_data"
-  data_root: ${oc.env:DATA_ROOT,./data}
-  verbose: false
-
-  H: 8
-  context_len: 3
-  frame_skips: 4
-  window_stride: 1
-  min_frames: ${data.H}
-
-  n_points: 20000
-  use_depth: true
-  load_rgb0: true
-  image_size: [240, 320]
-  downsample:
-    enabled: true
-    method: voxel
-    voxel_size: 0.005
-    target_n: 4096
-
   post_train: true
   post_train_IoU_thresh: 0.6
   post_train_min_t: 0.01
-  post_train_min_rot: 5.0
-  rot_smooth_alpha: 0.0
-  filter_iou_drop: true
-  iou_drop_threshold: 0.1
-
-  cache_index: true
-  force_refresh_cache: false
-  force_rebuild_windows_cache: false
-  use_sample_cache: false
-  sample_cache_dir: null
-  precompute_cache: false
-
-  use_synthetic: false
-  num_samples: 8
-  train_ratio_per_video: 0.7
-  shared_scenes_split: false
-
-model:
-  _target_: src.models.poser_v1.builder.build_poser_v1
-  name: poser_v1
-  H: ${data.H}
-  out_dim: ${eval:'${data.H}*9'}
-  context_dim: 256
-  compile: false
-  grad_ckpt: false
-  z_min: 0.01
-  auto_fit_perdim: true
-  norm_warmup_batches: 0  # Don't warmup on eval
-  temporal_kind: dit
-
-  w_rot: 2.0
-  w_trans: 20.0
-  w_velocity: 2.0
-  w_acceleration: 2.0
-  w_displacement: 10.0
-
-  loss_velocity: false
-  loss_acceleration: false
-  loss_displacement: false
-  horizon_weighting: false
-
-  # === OLD ARCHITECTURE (matching checkpoint) ===
-  encoder:
-    _target_: src.encoders.ptv3_adapter.PTV3Encoder
-    embed_dim: 768            # OLD: was 768
-    context_dim: 64
-    in_channels: 3            # OLD: was 3 (no object-centric features)
-    pooling: mean             # OLD: was mean (no attn_obj)
-    grid_size: ${data.downsample.voxel_size}
-    use_fp16: false
-
-  mesh: null
-
-  temporal_ar:
-    kind: ar_transformer
-    latent_dim: 768
-    n_layers: 8
-    n_heads: 12
-    dropout: 0.1
-    use_context_token: true
-    max_seq_len: ${eval:'${data.H}+4'}
-
-  temporal_dit:
-    kind: dit
-    latent_dim: 768           # OLD: was 768
-    n_layers: 12              # OLD: was 12
-    n_heads: 12               # OLD: was 12
-    dropout: 0.0              # OLD: was 0.0
-    out_dim: ${eval:'${data.H}*9'}
-    T: 1000
-    ddim_steps: 50
-    conditioning: film        # OLD: was film (not adaln_zero)
-    mlp_ratio: 4.0
-
-train:
-  device: cuda
-  batch_size: 32
-  lr: 2e-5
-  epochs: 1
-  seed: 42
-  amp: false
-  ema: true
-  ema_decay: 0.999
-
-  lr_schedule: cosine
-  warmup_steps: 0
-  warmup_start_factor: 1e-3
-  min_lr: 1e-6
-  cosine_lr: true
-
-  weight_decay: 0.0
-  grad_clip_norm: 1.0
-  grad_explode_thr: 1e3
-
-  save_every: 1000
-  out_dir: ./outputs/dit_epic_16gpus_70split_iou_drop_0.1
-
-  resume: false
-  resume_ckpt: null
-  reset_lr_on_resume: false
-
-  num_workers: 4
-  prefetch_factor: 2
-
-  eval_every_steps: 100
-  ddim_eval_full_val: true
-  rollout_eval: false
-
-  tiny_overfit: false
-  tiny_n: 1
-  tiny_n_eval: 1
-
-  debug: false
-  anomaly_detection: false
-  train_diagnostics: false
-  checks: false
-  unit_audit: false
-  parity_dump: false
-  grad_audit: false
-  grad_audit_steps: 2
-  grad_probe: false
-  lr_sweep: false
-  lr_sweep_steps: 300
-
-  ss:
-    start_p: 0.0
-    end_p: 0.7
-    anneal_steps: 5000
-
-log:
-  print_every: 10
-  show_progress: true
-  show_config_summary: true
-  show_model_summary: true
-  epoch_table: true
-  precision: 4
-  ema_window: 50
-  throughput_window: 20
+  filter_iou_drop: false
 
 eval:
   eval_mode: sampler
-  steps: ${oc.select:model.temporal.ddim_steps,50}
-  eta: 0.0
-  seed: ${train.seed}
-  repeats: 1
-  prefer_ema: true
   compute_canon_metrics: true
-  apply_sanity_checks: false
-  model_context_len: null
-  horizons: null
-  ckpt: ${train.out_dir}/checkpoints/best.pt
-
-infer:
-  ckpt: ${train.out_dir}/checkpoints/best.pt
-  ddim_steps: ${oc.select:model.temporal.ddim_steps,50}
-  ddim_full_T: false
-  first_n: 1
-  start_idx: 0
-  seed: 1234
-  teacher_forced: false
-  reconstruct_dit: null
-  reconstruct_from_gt: true
-  unit_audit: ${unit_audit}
-  parity_dump: false
-  sanity_pred_equals_gt: ${sanity_pred_equals_gt}
-  sanity_pred_unit_scale: ${sanity_pred_unit_scale}
-  identity_tol_deg: 0.2
-
-viz:
-  axis_length: 0.02
-  save_dir: ${train.out_dir}/overlays
-  init_frame: null
-  log_first_n: 1
-  start_idx: 0
-  check_poses: true
-  parity_dump: false
-  debug_identity_delta: false
-  debug_translation_scale_probe: false
-  unit_audit: true
-  sanity_pred_equals_gt: false
-  sanity_pred_unit_scale: 1.0
-  sanity_recon: false
-  sanity_recon_thr: 1e-10
-  pred_path: ${train.out_dir}/preds
-
-picker:
-  top_k: 500
-  iou_thr: 0.1
-  min_trans_m: 0.08
-  min_rot_deg: 45.0
-  ate_trans_max_m: 0.03
-  ate_rot_max_deg: 15.0
-  final_trans_max_m: 0.03
-  final_rot_max_deg: 15.0
-  fig_samples_sub: epic_fig_samples
-
-unit_audit: false
-sanity_pred_equals_gt: false
-sanity_pred_unit_scale: 1.0
-fp_audit: false
-sanity_recon: false
+  prefer_ema: false
