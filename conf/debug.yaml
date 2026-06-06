@@ -206,17 +206,6 @@ train:
 
   # === Checkpointing ===
   save_every: 2000
-  # out_dir: ./outputs/ar_epic_16gpus_70split_iou_drop_0.1
-  # out_dir: ./outputs/dit_epic_16gpus_70split_iou_drop_0.1
-  # out_dir: ./outputs/dit_epic_3P_32H
-  # out_dir: ./outputs/dit_epic_frame_skips_9
-  # out_dir: ./outputs/ar_epic_frame_skips_9
-  # out_dir: ./outputs/dit_epic_frame_skips_9_pt
-  # out_dir: ./outputs/dit_hot3d_frame_skips_4_split
-  # out_dir: ./outputs/dit_hot3d_frame_skips_4_pt_scratch_split
-  # out_dir: ./outputs/dit_hot3d_frame_skips_4_pt_split
-  # out_dir: ./outputs/ar_hot3d_frame_skips_4_split
-  # out_dir: ./outputs/dit_hot3d_frame_skips_4_pt_scratch_split_small_adaln_tiny
   out_dir: ./outputs/epic_fs0_ptv3
 
   # Resume options:
@@ -228,8 +217,6 @@ train:
   # resume: true
   resume: "best"
   resume_ckpt: null
-  # resume_ckpt: "./outputs/main_ptv3_50ep/checkpoints/step_10000.pt"
-  # resume_ckpt: "./outputs/dit_hot3d_frame_skips_4_split/checkpoints/best.pt"
   reset_lr_on_resume: true
 
 
