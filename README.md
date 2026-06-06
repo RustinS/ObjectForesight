@@ -109,8 +109,6 @@ uv run python -m src.train_main data.dataset_name=synth data.use_synthetic=true 
 | `train` | `batch_size`, `lr`, `amp`, `ema` | standard training knobs |
 | `eval` | `eval_mode`, `steps`, `prefer_ema` | sampler vs loss eval, DDIM steps |
 
-> **Note on weights:** the reference eval/inference loaders use the **raw (non-EMA)** weights — that is what reproduces the paper. The released `model.safetensors` are those raw weights.
-
 ## Repository structure
 
 ```
