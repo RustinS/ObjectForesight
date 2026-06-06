@@ -19,6 +19,17 @@ ObjectForesight is a 3D object-centric dynamics model: given a single egocentric
 | I/O | scene point cloud `[N,3]` + `context_len` past poses → `[H, 9]` future poses |
 | Params | ~183 M |
 
+### Results (EPIC-KITCHENS-100)
+
+6-DoF trajectory metrics from the [paper](https://arxiv.org/abs/2601.05237) (lower is better). ADE/FDE = average/final translation error (m); ARE/FRE = average/final rotation error (°).
+
+| Model | ADE ↓ | FDE ↓ | ARE ↓ | FRE ↓ |
+|---|---|---|---|---|
+| **ObjectForesight-DiT** (this model) | **0.019** | **0.035** | **7.98°** | 13.93° |
+| ObjectForesight-AR (baseline) | 0.067 | 0.074 | 9.48° | 12.58° |
+
+See the paper for the full table (DES/RES error-growth slopes, HOT3D, and the video-generation comparison).
+
 ---
 
 ## Setup
@@ -68,7 +79,7 @@ Point the loader at it with `data.dataset_root=/path/to/manip_data` (default: `.
 
 ## Usage
 
-All runs are configured with [Hydra](https://hydra.cc/) (`conf/debug.yaml` is the primary config). Override any field on the command line.
+All runs are configured with [Hydra](https://hydra.cc/) (`conf/epic.yaml` is the primary config). Override any field on the command line.
 
 ```bash
 # Train (single GPU)
@@ -111,7 +122,7 @@ src/
 ├── geom/              # SE(3) ops, 6-D rotation, pose canonicalization
 ├── dist/              # DDP / FSDP launch
 └── utils/             # config adapter, normalization, logging
-conf/                  # Hydra configs (debug.yaml, default.yaml, epic_eval.yaml)
+conf/                  # Hydra configs (epic.yaml [primary], default.yaml, epic_eval.yaml)
 scripts/               # setup.sh, submit.sh, preprocessing utilities
 ```
 

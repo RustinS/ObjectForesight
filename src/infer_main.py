@@ -826,7 +826,7 @@ def _display_inference_summary(cfg: DictConfig, temporal_backend_type: str) -> N
         )
 
 
-@hydra.main(config_path="../conf", config_name="debug", version_base=None)
+@hydra.main(config_path="../conf", config_name="epic", version_base=None)
 def main(cfg: DictConfig) -> None:
     """
     Main inference function for PoserV1 model.

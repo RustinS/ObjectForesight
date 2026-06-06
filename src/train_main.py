@@ -305,7 +305,7 @@ def _sync_z_min(core_model, cfg_blob: dict, cfg):
         print(f"[yellow]z_min sync skipped[/yellow]: {e}")
 
 
-@hydra.main(config_path="../conf", config_name="debug", version_base=None)
+@hydra.main(config_path="../conf", config_name="epic", version_base=None)
 def main(cfg: DictConfig) -> None:
     """Train PoserV1 model with DiT or AR backend."""
     print("Starting training…")

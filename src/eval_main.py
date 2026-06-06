@@ -768,7 +768,7 @@ def _find_best_step_checkpoint(ckpt_dir: str) -> str | None:
     return best_path
 
 
-@hydra.main(config_path="../conf", config_name="debug", version_base=None)
+@hydra.main(config_path="../conf", config_name="epic", version_base=None)
 def main(cfg: DictConfig) -> None:
     print("Starting evaluation…")
     # Register eval resolver BEFORE apply_config_adapter (it accesses temporal_dit.out_dim which uses ${eval:...})

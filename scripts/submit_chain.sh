@@ -4,7 +4,7 @@
 # cluster's 24h wall-clock cap but training needs longer.
 #
 # Usage:
-#   ./scripts/submit_chain.sh --config-name debug --job-name my_run --num-jobs 2
+#   ./scripts/submit_chain.sh --config-name epic --job-name my_run --num-jobs 2
 #
 # Required:
 #   --config-name <name>   Hydra config name (e.g., debug).

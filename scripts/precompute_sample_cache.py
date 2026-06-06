@@ -231,7 +231,7 @@ def load_config(config_path: str) -> DictConfig:
 
     p = Path(config_path)
     # If the file is inside a directory named "conf" we can use Hydra compose
-    # to honor the `defaults:` list (so configs inherit debug.yaml).
+    # to honor the `defaults:` list (so configs inherit epic.yaml).
     parents = list(p.parents)
     conf_root = next((parent for parent in parents if parent.name == "conf"), None)
     if conf_root is not None:
@@ -349,7 +349,7 @@ def get_cache_root(cfg: DictConfig) -> Path:
 
 def main():
     parser = argparse.ArgumentParser(description="Precompute sample cache for fast training")
-    parser.add_argument("--config", type=str, default="conf/debug.yaml", help="Path to config file")
+    parser.add_argument("--config", type=str, default="conf/epic.yaml", help="Path to config file")
     parser.add_argument("--num_shards", type=int, default=None, help="Override world size (manual sharding)")
     parser.add_argument("--shard_idx", type=int, default=None, help="Override rank (manual sharding)")
     parser.add_argument("--skip_existing", action="store_true", help="Skip samples that already have cache files")

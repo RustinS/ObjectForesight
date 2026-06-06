@@ -608,7 +608,7 @@ def _create_gif_export(
         print(f"[yellow]gif export skipped[/yellow]: {e}")
 
 
-@hydra.main(config_path="../conf", config_name="debug", version_base=None)
+@hydra.main(config_path="../conf", config_name="epic", version_base=None)
 def main(cfg: DictConfig) -> None:
     """
     Main visualization function for PoserV1 model predictions.
