@@ -1,0 +1,101 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "future-pose-pred"
+version = "0.1.0"
+description = "Non-autoregressive future pose prediction (Hydra + PyTorch)"
+readme = "README.md"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+  # Core ML
+  "torch>=2.9.0",
+  "torchvision>=0.24.0",
+  "numpy>=2.0",
+  "einops>=0.8.0",
+  # Config
+  "hydra-core==1.3.2",
+  "omegaconf>=2.3.0",
+  # Data/IO
+  "opencv-python>=4.10",
+  "matplotlib>=3.9",
+  "pillow>=10.0",
+  "imageio>=2.34",
+  "imageio-ffmpeg>=0.5",
+  "pandas>=2.2",
+  "decord>=0.6.0",
+  "lz4>=4.3.0",
+  # Geometry/3D
+  "trimesh>=4.0",
+  "open3d>=0.18",
+  "pyquaternion>=0.9",
+  "transformations>=2024.0",
+  # ML utilities
+  "timm>=1.0",
+  "scipy>=1.13",
+  "scikit-learn>=1.5",
+  "fast_pytorch_kmeans>=0.2",
+  "safetensors>=0.4",
+  # Config/utils
+  "addict>=2.4",
+  "easydict>=1.13",
+  "psutil>=5.9",
+  "huggingface_hub>=0.23",
+  # CLI/progress
+  "tqdm>=4.66",
+  "rich>=13.7",
+  # Build tools
+  "ninja",
+  # Visualization
+  "pyrender>=0.1.45",
+  "pyglet<2",
+  "PyOpenGL>=3.1",
+  "ruff",
+]
+
+[dependency-groups]
+# GPU packages are installed manually by setup.sh (not in dependency groups)
+# because they require building from source with CUDA
+dev = [
+  "pytest>=8.0",
+  "ruff>=0.4",
+]
+viz = [
+  "rerun-sdk>=0.18",
+  "plotly>=5.0",
+]
+
+# PyTorch CUDA 12.9 source
+[tool.uv.sources]
+torch = { index = "pytorch-cu129" }
+torchvision = { index = "pytorch-cu129" }
+
+[[tool.uv.index]]
+name = "pytorch-cu129"
+url = "https://download.pytorch.org/whl/cu129"
+explicit = true
+
+# Build settings for GPU packages
+[tool.uv]
+no-build-isolation-package = ["flash-attn", "torch-scatter", "pytorch3d"]
+# Only resolve for Linux (CUDA project)
+environments = ["sys_platform == 'linux'"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["src*"]
+
+[tool.ruff]
+line-length = 175
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B"]
+ignore = []
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+docstring-code-format = true

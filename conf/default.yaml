@@ -1,0 +1,332 @@
+data:
+  # === Dataset Selection ===
+  # Select dataset by name: one of [epic, synth, hot3d].
+  # - epic:  EPIC/3DManip filesystem adapter (current SceneSequenceDataset)
+  # - synth: tiny synthetic dataset for debugging
+  # - hot3d: HOT3D-Clips dataset (Aria RGB + SpaTrackerV2 depth)
+  dataset_name: epic
+  dataset_root: "./manip_data"
+  data_root: ${oc.env:DATA_ROOT,./data}
+  # Enable verbose logging for data loading (bad zip files, etc.)
+  verbose: false
+
+  # === Temporal Window ===
+  H: 8
+  # Number of context frames (excluding the anchor frame)
+  context_len: 1
+  # Number of frames to skip between consecutive samples in a window (0 = use every frame)
+  frame_skips: 0
+  window_stride: 1
+  min_frames: ${data.H}
+
+  # === Point Cloud ===
+  n_points: 20000
+  use_depth: true
+  load_rgb0: true
+  image_size: [240, 320]
+  downsample:
+    enabled: true
+    method: voxel
+    voxel_size: 0.02
+    target_n: 8000
+
+  # === Post-Training Filtering ===
+  # Post-training mode toggle. When true, dataset_name behaves like 'post_train'
+  post_train: false
+  # Minimum mean IoU (from per-frame CSV) required to keep a trajectory during post-training
+  post_train_IoU_thresh: 0.5
+  # Minimum total translation distance (meters) across a window during post-training
+  post_train_min_t: 0.02
+  # Minimum rotation (degrees) across a window during post-training (HOT3D only)
+  post_train_min_rot: 5.0
+  # Rotation smoothing (EMA on quaternions) applied to GT object rotations in dataset
+  # Smaller alpha = stronger smoothing. Set 0.0 to disable.
+  rot_smooth_alpha: 0.15
+  # Filter out windows where mask IoU vs first frame drops more than threshold
+  filter_iou_drop: false
+  iou_drop_threshold: 0.1
+
+  # === Caching ===
+  cache_index: true
+  # Force a full rescan and rewrite of the index/split caches this run
+  force_refresh_cache: false
+  # Force rebuild of the windows cache only (bypass read; rebuild and rewrite)
+  force_rebuild_windows_cache: false
+  # Sample caching (precompute expensive operations for faster training)
+  # Use scripts/precompute_sample_cache.py to build cache first
+  use_sample_cache: false          # Load from cache if available
+  sample_cache_dir: null           # Default: {dataset_root}/.sample_cache/{key}
+  precompute_cache: false          # Write to cache during iteration (for building cache)
+
+  # === Synthetic Dataset ===
+  use_synthetic: false
+  num_samples: 8
+
+  # === Train/Val Split ===
+  train_ratio_per_video: 0.70
+  # Shared-scenes split (HOT3D only): ensures all clips appear in both train and val
+  # Multi-object clips split objects; single-object clips split windows 70/30
+  shared_scenes_split: false
+
+  # === HOT3D Dataset ===
+  # (only used when dataset_name=hot3d)
+  hot3d:
+    # Path to HOT3D-Clips root directory (downloaded from HuggingFace)
+    clips_root: "/path/to/hot3d-clips"
+    # Path to pre-computed SpaTrackerV2 depth NPZ files
+    # Use depth_cache_pinhole/ for undistorted pinhole depth (recommended, correct geometry)
+    # Use depth_cache/ for legacy fisheye depth (deprecated, incorrect geometry)
+    depth_cache_dir: "/path/to/hot3d-clips/depth_cache_pinhole"
+    # Path to HOT3D object models (GLB files)
+    object_library: "/path/to/hot3d-clips/object_models_eval"
+    # Dataset split: "train" or "test"
+    split: train
+    # Cache sizing (optimized for memory-mapped NPY files)
+    # With NPY mmap: can cache many more clips (~4KB per handle vs ~40MB per array)
+    # With NPZ fallback: reduce these values (e.g., depth_cache_cap=50)
+    depth_cache_cap: 100
+    clip_cache_cap: 200
+
+model:
+  # === Core ===
+  _target_: src.models.poser_v1.builder.build_poser_v1
+  name: poser_v1
+  H: ${data.H}
+  out_dim: ${eval:'${data.H}*9'}
+  context_dim: 256
+  compile: true
+  grad_ckpt: false
+  # Minimum z-depth for point cloud (meters)
+  z_min: 0.05
+  # Auto-fit per-dimension normalization stats from first batch
+  auto_fit_perdim: true
+  temporal_kind: ar_transformer
+
+  # === Loss Weights ===
+  # Aux loss weights (geometry-aware; small by default)
+  # rot_deg is typically ~10, trans_l2 is typically ~0.05m
+  # Scale trans up relative to rot for balance
+  w_rot: 2.0
+  w_trans: 2.0
+  w_velocity: 0.5
+  w_acceleration: 0.1
+  w_displacement: 0.5
+
+  # === Auxiliary Losses (enable/disable) ===
+  # Velocity/acceleration supervision (temporal smoothness)
+  loss_velocity: false
+  loss_acceleration: false
+  # Displacement loss (total trajectory displacement)
+  loss_displacement: false
+
+  # === Encoder ===
+  encoder:
+    _target_: src.encoders.ptv3_adapter.PTV3Encoder
+    embed_dim: 768
+    context_dim: 64
+    in_channels: 3
+
+  # === Mesh Encoder ===
+  # Set to null to disable mesh encoder
+  mesh: null
+
+  # === Temporal Backends ===
+  temporal_ar:
+    kind: ar_transformer
+    latent_dim: 768
+    n_layers: 8
+    n_heads: 12
+    dropout: 0.0
+    use_context_token: true
+    max_seq_len: ${eval:'${data.H}+4'}
+
+  temporal_dit:
+    kind: dit
+    latent_dim: 768
+    n_layers: 12
+    n_heads: 12
+    dropout: 0.1
+    out_dim: ${eval:'${data.H}*9'}
+    T: 1000
+    ddim_steps: 50
+    # Conditioning mode: "film" (default for backward compat) or "adaln_zero"
+    conditioning: film
+    mlp_ratio: 4.0
+
+train:
+  # === Core Training ===
+  device: cuda
+  batch_size: 8
+  lr: 2e-4
+  epochs: 100
+  seed: 42
+  amp: true
+  ema: true
+  ema_decay: 0.999
+
+  # === Learning Rate Schedule ===
+  # LR scheduling (defaults preserve previous constant-LR behavior)
+  lr_schedule: none
+  warmup_steps: 0
+  warmup_start_factor: 1e-3
+  min_lr: 0.0
+  # Additional LR scheduling option (legacy alias for lr_schedule=cosine)
+  cosine_lr: false
+
+  # === Optimizer ===
+  weight_decay: 0.0
+  grad_clip_norm: 0.0
+  grad_explode_thr: 1e3
+
+  # === Checkpointing ===
+  save_every: 200
+  out_dir: ./outputs
+  # Resume options:
+  # - false: start fresh
+  # - true / "latest" / "auto": resume from the newest checkpoint under ${train.out_dir}/checkpoints
+  # - "best": resume from best.pt
+  # - "last": resume from last.pt
+  # - or provide a direct path (e.g., "/path/to/ckpt.pt")
+  resume: false
+  resume_ckpt: null
+  reset_lr_on_resume: false
+
+  # === DataLoader ===
+  num_workers: 4
+  prefetch_factor: 2
+
+  # === Validation ===
+  # Run validation every N total training steps
+  eval_every_steps: 100
+  # Number of windows for sampler-eval during validation
+  tiny_n_eval: 32
+  # If true, run sampler eval on full validation set during training (slower)
+  # Works for both AR rollout and DDIM sampling
+  sampler_eval_full_val: false
+  ddim_eval_full_val: false  # Legacy alias for sampler_eval_full_val
+  # AR-only: rollout evaluation during validation
+  rollout_eval: true
+
+  # === Tiny Overfit Mode ===
+  # Tiny overfit mode for debugging (train on tiny_n samples)
+  tiny_overfit: false
+  tiny_n: 150
+
+  # === Debug & Diagnostics ===
+  debug: false
+  anomaly_detection: false
+  train_diagnostics: false
+  checks: true
+  unit_audit: ${unit_audit}
+  parity_dump: false
+  grad_audit: false
+  grad_audit_steps: 1
+  grad_probe: false
+  lr_sweep: false
+  lr_sweep_steps: 300
+
+  # === Scheduled Sampling (AR only) ===
+  ss:
+    start_p: 0.0
+    end_p: 0.2
+    anneal_steps: 20000
+
+log:
+  # === Logging Settings ===
+  print_every: 1
+  show_progress: true
+  show_config_summary: true
+  show_model_summary: true
+  epoch_table: false
+  precision: 4
+  ema_window: 100
+  throughput_window: 200
+
+eval:
+  # === Evaluation Settings ===
+  eval_mode: sampler    # one of {"loss", "sampler"}
+  steps: ${oc.select:model.temporal.ddim_steps,50}
+  eta: 0.0
+  seed: ${train.seed}
+  repeats: 1
+  prefer_ema: true
+  # Canonicalized metrics (SE3 in anchor camera). Disable to speed up eval
+  compute_canon_metrics: true
+  # Apply optional sanity checks to canonicalized preds (usually a no-op)
+  apply_sanity_checks: false
+  # Override model context_len for evaluation (null = use data.context_len)
+  model_context_len: null
+  # Comma-separated list of horizons to evaluate (null = all up to H)
+  horizons: null
+  # Checkpoint path for evaluation (empty = use best.pt)
+  ckpt: ""
+
+infer:
+  # === Inference Settings ===
+  ckpt: ./outputs/checkpoints/best.pt
+  # AR transformer ignores ddim_steps; DiT uses it. Keep a safe default.
+  ddim_steps: ${oc.select:model.temporal.ddim_steps,50}
+  # Use full training T steps instead of ddim_steps
+  ddim_full_T: false
+  first_n: 1
+  # Start index within the eval dataset
+  start_idx: 0
+  # Random seed for inference
+  seed: 1234
+  teacher_forced: false
+  # DiT reconstruction mode (null = auto based on tiny_overfit)
+  reconstruct_dit: null
+  reconstruct_from_gt: true
+  unit_audit: ${unit_audit}
+  parity_dump: false
+  sanity_pred_equals_gt: ${sanity_pred_equals_gt}
+  sanity_pred_unit_scale: ${sanity_pred_unit_scale}
+
+viz:
+  # === Visualization Settings ===
+  axis_length: 0.05
+  save_dir: ./outputs/overlays
+  init_frame: null
+  log_first_n: 5
+  # Start index for visualization (must match inference for consistent pairing)
+  start_idx: 0
+  check_poses: true
+  parity_dump: false
+  debug_identity_delta: false
+  debug_translation_scale_probe: false
+  unit_audit: ${unit_audit}
+  sanity_pred_equals_gt: ${sanity_pred_equals_gt}
+  sanity_pred_unit_scale: ${sanity_pred_unit_scale}
+  # Path to predictions (directory or file). Prefer directory for multi-window runs.
+  pred_path: null
+
+picker:
+  # === Sample Picker Settings ===
+  # Number of unique objects / samples to pick for visualization
+  top_k: 20
+  # Minimum IoU along the trajectory to consider a window
+  iou_thr: 0.85
+  # Minimum object translation (meters) over the window
+  min_trans_m: 0.05
+  # Minimum object rotation (degrees) over the window (OR with min_trans_m)
+  min_rot_deg: 25.0
+  # Maximum allowed translation ATE (meters) for a sample to be picked
+  ate_trans_max_m: 0.01
+  # Maximum allowed rotation ATE (degrees) for a sample to be picked
+  ate_rot_max_deg: 10.0
+  # Maximum allowed final-frame translation error (meters) for a sample to be picked
+  final_trans_max_m: 0.02
+  # Maximum allowed final-frame rotation error (degrees) for a sample to be picked
+  final_rot_max_deg: 15.0
+  # Subdirectory under <repo_root>/outputs/ to store picked samples
+  fig_samples_sub: fig_samples
+
+# === Global Debug/Audit Flags ===
+# These are referenced via ${unit_audit} etc. throughout config
+# Global project-level options and shims for adapter
+temporal:
+  kind: ar_transformer
+unit_audit: false
+sanity_pred_equals_gt: false
+sanity_pred_unit_scale: 1.0
+fp_audit: false

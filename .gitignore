@@ -1,0 +1,55 @@
+# Virtual environment
+.venv/
+
+# External extensions (cloned by setup.sh)
+.ext/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+*.egg
+dist/
+build/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Outputs
+outputs/
+*.log
+
+# Editor / agent
+.cursor/
+.claude/
+.DS_Store
+
+# Caches
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+.sample_cache/
+*.windows*.pkl
+.spatrack_len.json
+
+# Model weights (released separately on Hugging Face: raivn/ObjectForesight-EPIC-DiT)
+*.pt
+*.pth
+*.ckpt
+*.safetensors
+wandb/
+
+# Data (download from Hugging Face: raivn/ObjectForesight-EPIC)
+manip_data/
+hot3d-clips/
+data/
+*.tar

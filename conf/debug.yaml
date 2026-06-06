@@ -1,0 +1,373 @@
+data:
+  # === Dataset Selection ===
+  # Select dataset by name: one of [epic, synth, hot3d].
+  # - epic:  EPIC/3DManip filesystem adapter (current SceneSequenceDataset)
+  # - synth: tiny synthetic dataset for debugging
+  # - hot3d: HOT3D-Clips dataset (Aria RGB + SpaTrackerV2 depth)
+  dataset_name: epic
+  dataset_root: "./manip_data"
+  data_root: ${oc.env:DATA_ROOT,./data}
+  verbose: false
+
+  # === Temporal Window ===
+  H: 8
+  context_len: 3
+  frame_skips: 0
+  window_stride: 1
+  min_frames: ${data.H}
+
+  # === Point Cloud ===
+  n_points: 20000
+  use_depth: true
+  load_rgb0: true
+  image_size: [240, 320]
+  downsample:
+    enabled: true
+    method: voxel
+    voxel_size: 0.005
+    target_n: 4096
+
+  # === Post-Training Filtering ===
+  # Post-training mode toggle. When true, dataset_name behaves like 'post_train'
+  post_train: false
+  # Minimum mean IoU (from per-frame CSV) required to keep a trajectory during post-training
+  post_train_IoU_thresh: 0.6
+  # Minimum total translation distance (meters) across a window during post-training
+  post_train_min_t: 0.01
+  # Minimum rotation (degrees) across a window during post-training (HOT3D only)
+  post_train_min_rot: 5.0
+  # Rotation smoothing (EMA on quaternions) applied to GT object rotations in dataset
+  # Smaller alpha = stronger smoothing. Set 0.0 to disable.
+  rot_smooth_alpha: 0.0
+  # Filter out windows where mask IoU vs first frame drops more than threshold
+  filter_iou_drop: true
+  iou_drop_threshold: 0.1
+
+  # === Hand Pose Loading ===
+  # Load MANO hand poses from HOT3D hands.json files
+  load_hand_poses: false
+
+  # === Caching ===
+  cache_index: true
+  # Force a full rescan and rewrite of the index/split caches this run
+  force_refresh_cache: false
+  # Force rebuild of the windows cache only (bypass read; rebuild and rewrite)
+  force_rebuild_windows_cache: false
+  # Sample caching (precompute expensive operations for faster training)
+  # Use scripts/precompute_sample_cache.py to build cache first
+  use_sample_cache: true          # Load from cache if available
+  sample_cache_dir: null          # Default: {dataset_root}/.sample_cache/{key}
+  precompute_cache: true          # Write to cache during iteration (for building cache)
+  overwrite_sample_cache: false   # If true, recompute + overwrite existing sample cache files (disables cache reads)
+
+  # === Synthetic Dataset ===
+  use_synthetic: false
+  num_samples: 8
+
+  # === Train/Val Split ===
+  train_ratio_per_video: 0.7
+  # Shared-scenes split (HOT3D only): ensures all clips appear in both train and val
+  # Multi-object clips split objects; single-object clips split windows 70/30
+  shared_scenes_split: true
+
+  # === HOT3D Dataset ===
+  # (only used when dataset_name=hot3d)
+  hot3d:
+    # Path to HOT3D-Clips root directory (downloaded from HuggingFace)
+    clips_root: "./hot3d-clips"
+    # Path to pre-computed SpaTrackerV2 depth NPZ files
+    # Supports both NPZ (compressed) and NPY (memory-mappable) formats
+    # Run scripts/convert_depth_npz_to_npy.py to convert NPZ -> NPY for ~200x RAM savings
+    depth_cache_dir: "./hot3d-clips/depth_cache_pinhole"
+    # Path to HOT3D object models (GLB files)
+    object_library: "./hot3d-clips/object_models_eval"
+    # Dataset split: "train" or "test"
+    split: train
+    # With NPY mmap: can cache many more clips (~4KB per handle vs ~40MB per array)
+    # With NPZ fallback: reduce these values (e.g., depth_cache_cap=50)
+    depth_cache_cap: 600    # ~21GB/worker observed, safe for 64 workers during eval
+    clip_cache_cap: 1000    # Clip metadata is small, can cache more
+
+model:
+  # === Core ===
+  _target_: src.models.poser_v1.builder.build_poser_v1
+  name: poser_v1
+  H: ${data.H}
+  out_dim: ${eval:'${data.H}*9'}
+  context_dim: 256
+  compile: false
+  grad_ckpt: false
+  # Minimum z-depth for point cloud (meters)
+  z_min: 0.01
+  # Auto-fit per-dimension normalization stats from first batch
+  auto_fit_perdim: true
+  # Number of batches to accumulate for depth-norm stats warmup (DiT only)
+  # Set to 0 to disable warmup and use single-batch fitting
+  norm_warmup_batches: 10
+  # temporal_kind: ar_transformer
+  temporal_kind: dit
+
+  # === Hand Context ===
+  # Use MANO hand poses as additional context input (requires data.load_hand_poses=true)
+  use_hand_context: false
+
+  # === Loss Weights ===
+  # Aux loss weights (geometry-aware)
+  # rot_deg is typically ~10, trans_l2 is typically ~0.05m
+  # Scale trans up relative to rot for balance
+  w_rot: 2.0
+  w_trans: 20.0
+  w_velocity: 2.0
+  w_acceleration: 2.0
+  w_displacement: 10.0
+
+  # === Auxiliary Losses (enable/disable) ===
+  loss_velocity: true
+  loss_acceleration: true
+  loss_displacement: true
+
+  # === Horizon-Aware Loss Weighting ===
+  # Apply increasing weights to later horizon steps (H=8 harder than H=1)
+  horizon_weighting: true
+  horizon_weight_start: 1.0   # Weight for first horizon step
+  horizon_weight_end: 3.0     # Weight for last horizon step
+  horizon_weight_schedule: "linear"  # linear, quadratic, exponential, cosine
+
+  # === Encoder ===
+  encoder:
+    _target_: src.encoders.ptv3_adapter.PTV3Encoder
+    embed_dim: 768
+    # embed_dim: 512
+    context_dim: 64
+    in_channels: 6
+    pooling: attn_obj
+    grid_size: ${data.downsample.voxel_size}
+    use_fp16: false
+
+  # === Mesh Encoder ===
+  mesh: null
+
+  # === Temporal Backends ===
+  temporal_ar:
+    kind: ar_transformer
+    latent_dim: 768
+    n_layers: 8
+    n_heads: 12
+    dropout: 0.1
+    use_context_token: true
+    max_seq_len: ${eval:'${data.H}+4'}
+
+  temporal_dit:
+    kind: dit
+    latent_dim: 768
+    # latent_dim: 512
+    n_layers: 12
+    # n_layers: 10
+    n_heads: 12
+    # n_heads: 8
+    # dropout: 0.0
+    dropout: 0.1
+    out_dim: ${eval:'${data.H}*9'}
+    T: 1000
+    ddim_steps: 50
+    # Conditioning mode: "film" (original) or "adaln_zero" (per-layer AdaLN-Zero)
+    conditioning: adaln_zero
+    mlp_ratio: 4.0
+
+train:
+  # === Core Training ===
+  device: cuda
+  batch_size: 128
+  # lr: 8e-4
+  lr: 2e-4
+  epochs: 200
+  # epochs: 5000
+  # epochs: 3
+  # seed: 42
+  seed: 11
+  amp: false
+  ema: true
+  ema_decay: 0.999
+
+  # === Learning Rate Schedule ===
+  lr_schedule: cosine
+  warmup_steps: 500
+  warmup_start_factor: 1e-3
+  min_lr: 1e-5
+  # min_lr: 4e-5
+  # Additional LR scheduling option (legacy alias for lr_schedule=cosine)
+  cosine_lr: true
+
+  # === Optimizer ===
+  # weight_decay: 0.0
+  weight_decay: 0.01
+  grad_clip_norm: 1.0
+  grad_explode_thr: 1e3
+
+  # === Checkpointing ===
+  save_every: 2000
+  # out_dir: ./outputs/ar_epic_16gpus_70split_iou_drop_0.1
+  # out_dir: ./outputs/dit_epic_16gpus_70split_iou_drop_0.1
+  # out_dir: ./outputs/dit_epic_3P_32H
+  # out_dir: ./outputs/dit_epic_frame_skips_9
+  # out_dir: ./outputs/ar_epic_frame_skips_9
+  # out_dir: ./outputs/dit_epic_frame_skips_9_pt
+  # out_dir: ./outputs/dit_hot3d_frame_skips_4_split
+  # out_dir: ./outputs/dit_hot3d_frame_skips_4_pt_scratch_split
+  # out_dir: ./outputs/dit_hot3d_frame_skips_4_pt_split
+  # out_dir: ./outputs/ar_hot3d_frame_skips_4_split
+  # out_dir: ./outputs/dit_hot3d_frame_skips_4_pt_scratch_split_small_adaln_tiny
+  out_dir: ./outputs/epic_fs0_ptv3
+
+  # Resume options:
+  # - false: start fresh
+  # - true / "latest" / "auto": resume from the newest checkpoint under ${train.out_dir}/checkpoints
+  # - "best": resume from best.pt
+  # - "last": resume from last.pt
+  # - or provide a direct path (e.g., "/path/to/ckpt.pt")
+  # resume: true
+  resume: "best"
+  resume_ckpt: null
+  # resume_ckpt: "./outputs/main_ptv3_50ep/checkpoints/step_10000.pt"
+  # resume_ckpt: "./outputs/dit_hot3d_frame_skips_4_split/checkpoints/best.pt"
+  reset_lr_on_resume: true
+
+
+  # === DataLoader ===
+  num_workers: 4
+  prefetch_factor: 2
+
+  # === Validation ===
+  eval_every_steps: 500
+  # If true, use full validation set for DDIM eval during training
+  ddim_eval_full_val: true
+  # AR-only: rollout evaluation during validation
+  rollout_eval: true
+
+  # === Tiny Overfit Mode ===
+  tiny_overfit: false
+  tiny_n: 1
+  tiny_n_eval: 1
+
+  # === Debug & Diagnostics ===
+  debug: true
+  anomaly_detection: false
+  train_diagnostics: true
+  checks: true
+  unit_audit: false
+  parity_dump: false
+  grad_audit: false
+  grad_audit_steps: 2
+  grad_probe: false
+  lr_sweep: false
+  lr_sweep_steps: 300
+
+  # === Scheduled Sampling (AR only) ===
+  ss:
+    start_p: 0.0
+    end_p: 0.7
+    anneal_steps: 5000
+
+log:
+  # === Logging Settings ===
+  print_every: 10
+  show_progress: true
+  show_config_summary: true
+  show_model_summary: true
+  epoch_table: true
+  precision: 4
+  ema_window: 50
+  throughput_window: 20
+
+eval:
+  # === Evaluation Settings ===
+  eval_mode: sampler
+  steps: ${oc.select:model.temporal.ddim_steps,50}
+  eta: 0.0
+  seed: ${train.seed}
+  repeats: 1
+  prefer_ema: true
+  # Disable to skip slower canonicalized SE3 metrics
+  compute_canon_metrics: false
+  # Keep off unless you specifically want infer-style sanity checks
+  apply_sanity_checks: false
+  # Override model context_len for evaluation (null = use data.context_len)
+  model_context_len: null
+  # Comma-separated list of horizons to evaluate (null = all up to H)
+  horizons: null
+  # Checkpoint path for evaluation (empty = use best.pt)
+  ckpt: ""
+
+infer:
+  # === Inference Settings ===
+  ckpt: ${train.out_dir}/checkpoints/best.pt
+  ddim_steps: ${oc.select:model.temporal.ddim_steps,50}
+  # ddim_steps: 100
+  # Use full training T steps instead of ddim_steps
+  ddim_full_T: false
+  # Number of windows to run inference on; set 0 to process all available
+  first_n: 1
+  # Start index within the eval dataset
+  start_idx: 0
+  # Random seed for inference
+  seed: 1234
+  teacher_forced: false
+  # DiT reconstruction mode (null = auto based on tiny_overfit)
+  reconstruct_dit: null
+  reconstruct_from_gt: true
+  unit_audit: ${unit_audit}
+  parity_dump: false
+  sanity_pred_equals_gt: ${sanity_pred_equals_gt}
+  sanity_pred_unit_scale: ${sanity_pred_unit_scale}
+  # removed debug flags: debug_align_sweep, auto_time_shift, pick_best_path
+  identity_tol_deg: 0.2
+
+viz:
+  # === Visualization Settings ===
+  axis_length: 0.02
+  save_dir: ${train.out_dir}/overlays
+  init_frame: null
+  # Number of windows to visualize; set 0 to visualize all available
+  log_first_n: 1
+  # Start index for visualization (must match inference for consistent pairing)
+  start_idx: 0
+  check_poses: true
+  parity_dump: false
+  debug_identity_delta: false
+  debug_translation_scale_probe: false
+  unit_audit: true
+  sanity_pred_equals_gt: false
+  sanity_pred_unit_scale: 1.0
+  sanity_recon: false
+  sanity_recon_thr: 1e-10
+  # Path to predictions (directory or file). Prefer directory for multi-window runs.
+  pred_path: ${train.out_dir}/preds
+
+picker:
+  # === Sample Picker Settings ===
+  # Number of unique objects / samples to pick for visualization
+  top_k: 500
+  # Minimum IoU along the trajectory to consider a window
+  iou_thr: 0.1
+  # Minimum object translation (meters) over the window
+  min_trans_m: 0.08
+  # Minimum object rotation (degrees) over the window (OR with min_trans_m)
+  min_rot_deg: 45.0
+  # Maximum allowed translation ATE (meters) for a sample to be picked
+  ate_trans_max_m: 0.03
+  # Maximum allowed rotation ATE (degrees) for a sample to be picked
+  ate_rot_max_deg: 15.0
+  # Maximum allowed final-frame translation error (meters) for a sample to be picked
+  final_trans_max_m: 0.03
+  # Maximum allowed final-frame rotation error (degrees) for a sample to be picked
+  final_rot_max_deg: 15.0
+  # Subdirectory under <repo_root>/outputs/ to store picked samples
+  fig_samples_sub: hot3d_fig_samples_4skips_scratch_split_adaln_strict
+
+# === Global Debug/Audit Flags ===
+# These are referenced via ${unit_audit} etc. throughout config
+unit_audit: false
+sanity_pred_equals_gt: false
+sanity_pred_unit_scale: 1.0
+fp_audit: false
+sanity_recon: false
