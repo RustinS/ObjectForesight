@@ -12,8 +12,8 @@ __pycache__/
 .Python
 *.egg-info/
 *.egg
-dist/
-build/
+/dist/
+/build/
 
 # IDE
 .idea/
@@ -51,5 +51,5 @@ wandb/
 # Data (download from Hugging Face: raivn/ObjectForesight-EPIC)
 manip_data/
 hot3d-clips/
-data/
+/data/
 *.tar
