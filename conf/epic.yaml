@@ -77,7 +77,6 @@ data:
     clips_root: "./hot3d-clips"
     # Path to pre-computed SpaTrackerV2 depth NPZ files
     # Supports both NPZ (compressed) and NPY (memory-mappable) formats
-    # Run scripts/convert_depth_npz_to_npy.py to convert NPZ -> NPY for ~200x RAM savings
     depth_cache_dir: "./hot3d-clips/depth_cache_pinhole"
     # Path to HOT3D object models (GLB files)
     object_library: "./hot3d-clips/object_models_eval"
@@ -329,27 +328,6 @@ viz:
   sanity_recon_thr: 1e-10
   # Path to predictions (directory or file). Prefer directory for multi-window runs.
   pred_path: ${train.out_dir}/preds
-
-picker:
-  # === Sample Picker Settings ===
-  # Number of unique objects / samples to pick for visualization
-  top_k: 500
-  # Minimum IoU along the trajectory to consider a window
-  iou_thr: 0.1
-  # Minimum object translation (meters) over the window
-  min_trans_m: 0.08
-  # Minimum object rotation (degrees) over the window (OR with min_trans_m)
-  min_rot_deg: 45.0
-  # Maximum allowed translation ATE (meters) for a sample to be picked
-  ate_trans_max_m: 0.03
-  # Maximum allowed rotation ATE (degrees) for a sample to be picked
-  ate_rot_max_deg: 15.0
-  # Maximum allowed final-frame translation error (meters) for a sample to be picked
-  final_trans_max_m: 0.03
-  # Maximum allowed final-frame rotation error (degrees) for a sample to be picked
-  final_rot_max_deg: 15.0
-  # Subdirectory under <repo_root>/outputs/ to store picked samples
-  fig_samples_sub: hot3d_fig_samples_4skips_scratch_split_adaln_strict
 
 # === Global Debug/Audit Flags ===
 # These are referenced via ${unit_audit} etc. throughout config

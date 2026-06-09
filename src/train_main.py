@@ -50,7 +50,7 @@ from .utils.train_utils import (
 )
 
 # ============================================================================
-# PyTorch backend configuration (formerly utils/backend_setup.py)
+# PyTorch backend configuration
 # ============================================================================
 
 
@@ -279,7 +279,7 @@ def _log_dnorm_buffers(core_model):
 
 
 def _check_temporal_schedule(core_model, cfg):
-    """Verify temporal schedule T matches config for DiT/FM (both share the sinusoidal embedding range)."""
+    """Verify temporal schedule T matches config for DiT (the sinusoidal embedding range)."""
     try:
         if str(cfg.model.temporal_kind).lower() == "dit":
             t_train = int(core_model._T_train.item())
@@ -437,9 +437,8 @@ def main(cfg: DictConfig) -> None:
     if anomaly_detection:
         autograd.set_detect_anomaly(True)
 
-    # AMP setup - NOTE: For DiT/FM, use model.dit_bf16=true for selective bf16 (encoder stays fp32)
-    # Global AMP is disabled for DiT/FM because spconv doesn't support bf16. FM reuses DiTPose
-    # plus the same spconv encoder, so it gates the same way.
+    # AMP setup - NOTE: For DiT, use model.dit_bf16=true for selective bf16 (encoder stays fp32)
+    # Global AMP is disabled for DiT because spconv doesn't support bf16.
     gradient_audit = GradFlowAudit(model, optimizer, cfg)
     is_dit_like = str(cfg.model.temporal_kind).lower() == "dit"
     precision = os.environ.get("PRECISION", "bf16").lower()
@@ -544,10 +543,9 @@ def main(cfg: DictConfig) -> None:
                 print(f"[yellow]Resume failed[/yellow]: {e}. Proceeding without resume.")
         _barrier()
 
-    # DiT/FM depth-norm warmup: fit stats from multiple batches before training
-    # IMPORTANT: Must happen AFTER checkpoint loading so _dnorm_fitted is respected.
-    # FM uses the same depth-norm path as DiT, so gate the warmup the same way —
-    # otherwise per-rank single-batch fitting produces divergent _dnorm_* across the 16 ranks.
+    # DiT depth-norm warmup: fit stats from multiple batches before training.
+    # IMPORTANT: Must happen AFTER checkpoint loading so _dnorm_fitted is respected,
+    # otherwise per-rank single-batch fitting produces divergent _dnorm_* across ranks.
     n_warmup = int(getattr(cfg.model, "norm_warmup_batches", 0))
     if is_dit_like and n_warmup > 0 and not core_model._dnorm_fitted.item():
         if _is_rank0():

@@ -48,13 +48,13 @@ def apply_config_adapter(cfg: DictConfig) -> DictConfig:
     n_heads = int(_pick("n_heads", 12))
     dropout = float(_pick("dropout", 0.1 if selected_kind == "dit" else 0.0))
 
-    # DiT/FM extras (FM reuses DiTPose body, so out_dim resolution is identical)
+    # DiT extras
     _default_H = getattr(getattr(cfg, "data", {}), "H", None) or getattr(getattr(cfg, "model", {}), "H", None)
     picked_out_dim = _pick("out_dim", None)
     if selected_kind == "dit":
         if picked_out_dim is None:
             if _default_H is None:
-                raise ValueError("Temporal DiT/FM config requires either temporal.out_dim or data.H/model.H")
+                raise ValueError("Temporal DiT config requires either temporal.out_dim or data.H/model.H")
             out_dim = int(_default_H) * 9
         else:
             out_dim = int(picked_out_dim)

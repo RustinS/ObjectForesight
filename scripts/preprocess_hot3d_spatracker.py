@@ -43,7 +43,7 @@ import torch.distributed as dist
 from hand_tracking_toolkit import camera
 from hand_tracking_toolkit.dataset import warp_image
 
-# Add SpaTrackerV2 to path (use parent 3dmanip directory)
+# Add SpaTrackerV2 to path
 sys.path.insert(0, "./SpaTrackerV2")
 
 

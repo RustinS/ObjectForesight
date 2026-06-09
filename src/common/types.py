@@ -34,7 +34,7 @@ class SceneSample:
 
 
 # ============================================================================
-# Model interfaces (formerly models/poser_v1/interfaces.py)
+# Model interfaces
 # ============================================================================
 
 
@@ -58,7 +58,6 @@ class PoserConfig:
     out_dim: int
     context_dim: int
     compile: bool = False
-    # rm-freeze-backbone: removed user-accessible freeze flag (kept out of config)
     grad_ckpt: bool = False
     encoder: Any = None
     temporal: Any = None

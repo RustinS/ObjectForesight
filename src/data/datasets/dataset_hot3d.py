@@ -961,7 +961,7 @@ class HOT3DClipsDataset(Dataset):
             "anchor_mode": "window_start",
             "anchor_frame_idx": int(frame_ids[anchor_local]) if frame_ids[anchor_local].isdigit() else anchor_local,
             "anchor_local_idx": anchor_local,
-            "anchor_depth_idx": anchor_depth_idx,  # clip-local index for depth array (for sample_picker/viz)
+            "anchor_depth_idx": anchor_depth_idx,  # clip-local index for depth array (for viz)
             "extrinsics_convention": "c2w",
             "context_len": P_ctx2,
             "context_frame_ids": np.array([int(f) if f.isdigit() else i for i, f in enumerate(frame_ids[:P_ctx2])], dtype=np.int32),
@@ -971,7 +971,7 @@ class HOT3DClipsDataset(Dataset):
             "context_hand_poses": context_hand_poses,
         }
 
-        # If we have a mesh library, set mesh_path (EPIC-parity; used by viz/render tools).
+        # If we have a mesh library, set mesh_path (EPIC-parity).
         if isinstance(self.object_library, str) and self.object_library and self._uid_to_bop:
             bop_id = self._uid_to_bop.get(str(obj_uid))
             if bop_id is not None:

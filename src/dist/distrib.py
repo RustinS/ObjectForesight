@@ -13,7 +13,7 @@ import torch
 import torch.distributed as dist
 
 # ============================================================================
-# Launch detection utilities (formerly launch_detect.py)
+# Launch detection utilities
 # ============================================================================
 
 

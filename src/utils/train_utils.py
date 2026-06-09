@@ -160,7 +160,7 @@ class GradFlowAudit:
         self.hooks = []
         self.encoder_hook = _BackHook("encoder")
         self.temporal_kind = str(getattr(self.model, "_temporal_kind", "dit")).lower()
-        # FM reuses DiTPose; label and key it the same so grad-audit reports are useful.
+        # Label by backend so grad-audit reports are readable.
         self.temporal_label = "DiTPose" if self.temporal_kind == "dit" else "ar_transformer"
         self.temporal_hook = _BackHook(self.temporal_label)
         self.preclip_norm = None

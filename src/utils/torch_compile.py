@@ -58,7 +58,6 @@ def maybe_enable_compile(model: torch.nn.Module, cfg, *, print_fn: Callable[[str
     compiled: list[str] = []
 
     if kind == "dit":
-        # FM reuses DiTPose unchanged; compile the same way.
         try:
             core.temporal = torch.compile(core.temporal, mode=mode)
             core.dit = core.temporal

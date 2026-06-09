@@ -9,7 +9,7 @@ from ..utils.progress import tqdm_auto as tqdm
 from .cache import read_index, spot_check_index, write_index
 
 # ============================================================================
-# Path construction helpers (formerly paths.py)
+# Path construction helpers
 # ============================================================================
 
 ACTION_MP4 = "action.mp4"

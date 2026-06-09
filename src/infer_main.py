@@ -451,7 +451,6 @@ def _compute_evaluation_metrics(
 
     # Indices (A)
     Hn = int(predicted_poses.shape[0])
-    # debug alignment sweep removed
     P, aLoc, anchor_idx, start_gt, stop_gt = _compute_indices(sample, cfg, Hn)
     print(f"ctx_len={P} anchor_idx={anchor_idx} pred_range=[{start_gt}, {stop_gt - 1}] H={Hn}")
     # Early gap detection: if window frame_ids are contiguous and context aligns with frames[P-1], then start_gt must equal P
@@ -542,7 +541,6 @@ def _compute_evaluation_metrics(
     if not torch.allclose(predicted_camera_poses, _raw):
         raise RuntimeError("Inference parity: apply_sanity_checks changed predictions. Set cfg.infer.sanity_pred_equals_gt=false and cfg.infer.sanity_pred_unit_scale=1.0")
 
-    # debug alignment sweep removed
     # Ensure GT has batch dim for all diagnostics
     T_gt_b = T_gt_slice.unsqueeze(0).to(T_pred_abs.device, T_pred_abs.dtype)  # (1,H,4,4)
 

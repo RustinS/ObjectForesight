@@ -366,7 +366,7 @@ def main():
     # Two layers of sharding (composable):
     # - Outer (--num_shards/--shard_idx): take a static slice of the full
     #   dataset. Used for smoke tests or when running multiple independent
-    #   beaker jobs each handling a subset.
+    #   jobs each handling a subset.
     # - Inner (torchrun): within that slice, distribute work across the
     #   torchrun-spawned workers via setup_distributed().
     # When neither outer nor distributed is set, processes the full dataset

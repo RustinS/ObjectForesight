@@ -43,7 +43,7 @@ from .utils.torch_compile import maybe_enable_compile
 from .utils.train_utils import _batch_size_from, debug_collate
 
 # ============================================================================
-# PyTorch backend configuration (formerly utils/backend_setup.py)
+# PyTorch backend configuration
 # ============================================================================
 
 

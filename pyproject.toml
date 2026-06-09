@@ -3,9 +3,9 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "future-pose-pred"
+name = "objectforesight"
 version = "0.1.0"
-description = "Non-autoregressive future pose prediction (Hydra + PyTorch)"
+description = "ObjectForesight: predicting future 3D object trajectories from human videos (PyTorch + Hydra)"
 readme = "README.md"
 requires-python = ">=3.11,<3.12"
 dependencies = [
@@ -51,7 +51,6 @@ dependencies = [
   "pyrender>=0.1.45",
   "pyglet<2",
   "PyOpenGL>=3.1",
-  "ruff",
 ]
 
 [dependency-groups]
@@ -60,10 +59,6 @@ dependencies = [
 dev = [
   "pytest>=8.0",
   "ruff>=0.4",
-]
-viz = [
-  "rerun-sdk>=0.18",
-  "plotly>=5.0",
 ]
 
 # PyTorch CUDA 12.9 source

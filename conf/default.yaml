@@ -300,27 +300,6 @@ viz:
   # Path to predictions (directory or file). Prefer directory for multi-window runs.
   pred_path: null
 
-picker:
-  # === Sample Picker Settings ===
-  # Number of unique objects / samples to pick for visualization
-  top_k: 20
-  # Minimum IoU along the trajectory to consider a window
-  iou_thr: 0.85
-  # Minimum object translation (meters) over the window
-  min_trans_m: 0.05
-  # Minimum object rotation (degrees) over the window (OR with min_trans_m)
-  min_rot_deg: 25.0
-  # Maximum allowed translation ATE (meters) for a sample to be picked
-  ate_trans_max_m: 0.01
-  # Maximum allowed rotation ATE (degrees) for a sample to be picked
-  ate_rot_max_deg: 10.0
-  # Maximum allowed final-frame translation error (meters) for a sample to be picked
-  final_trans_max_m: 0.02
-  # Maximum allowed final-frame rotation error (degrees) for a sample to be picked
-  final_rot_max_deg: 15.0
-  # Subdirectory under <repo_root>/outputs/ to store picked samples
-  fig_samples_sub: fig_samples
-
 # === Global Debug/Audit Flags ===
 # These are referenced via ${unit_audit} etc. throughout config
 # Global project-level options and shims for adapter
