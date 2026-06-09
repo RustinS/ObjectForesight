@@ -45,7 +45,7 @@ warnings.filterwarnings("ignore", category=TqdmExperimentalWarning)
 
 
 class SceneSequenceDataset(Dataset):
-    """Filesystem-backed dataset that scans 3DManip results and builds H-step windows.
+    """Filesystem-backed dataset that scans the extracted manipulation data and builds H-step windows.
 
     Each item corresponds to one object trajectory window of length H+1 frames, returning
     targets for steps 1..H relative to the first frame k0.

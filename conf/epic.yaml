@@ -1,7 +1,7 @@
 data:
   # === Dataset Selection ===
   # Select dataset by name: one of [epic, synth, hot3d].
-  # - epic:  EPIC/3DManip filesystem adapter (current SceneSequenceDataset)
+  # - epic:  EPIC filesystem adapter (current SceneSequenceDataset)
   # - synth: tiny synthetic dataset for debugging
   # - hot3d: HOT3D-Clips dataset (Aria RGB + SpaTrackerV2 depth)
   dataset_name: epic

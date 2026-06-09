@@ -229,7 +229,7 @@ def _load_anchor_image(sample: dict, preferred_local_idx: int | None = None) -> 
         except Exception:
             pass
 
-    # Standard video file (EPIC/3DManip)
+    # Standard video file (EPIC)
     try:
         if isinstance(rgb_path, str):
             if target_local is not None and frame_ids is not None:
