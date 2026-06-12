@@ -109,6 +109,35 @@ uv run python -m src.train_main data.dataset_name=synth data.use_synthetic=true 
 | `train` | `batch_size`, `lr`, `amp`, `ema` | standard training knobs |
 | `eval` | `eval_mode`, `steps`, `prefer_ema` | sampler vs loss eval, DDIM steps |
 
+## Training and evaluation on HOT3D
+
+The code also supports HOT3D-Clips (egocentric Aria sequences with motion-capture ground-truth object poses) through the `hot3d` config. No HOT3D checkpoint is released, so you train your own.
+
+1. Download HOT3D-Clips from [Meta](https://facebookresearch.github.io/hot3d/#download): the per-split clip tars (`train_aria/`, `test_aria/`) and the object models.
+
+2. Build the SpaTrackerV2 depth cache (needs [SpaTrackerV2](https://github.com/henry123-boy/SpaTrackerV2); one NPZ per clip):
+
+   ```bash
+   python scripts/preprocess_hot3d_spatracker.py \
+     --clips_root /path/to/hot3d-clips/train_aria \
+     --output_dir /path/to/hot3d-clips/depth_cache_pinhole
+   # multi-GPU: torchrun --standalone --nproc_per_node=8 scripts/preprocess_hot3d_spatracker.py \
+   #   --clips_root .../train_aria --output_dir .../depth_cache_pinhole --skip_existing
+   ```
+
+   (Optional: `scripts/preprocess_hot3d_metadata.py` pre-extracts clip metadata for faster loading.)
+
+3. Train with the `hot3d` config (frame-skip 4 plus stationary-window filtering, matching the paper). Here `clips_root` is the parent directory that holds `train_aria/` and `test_aria/`:
+
+   ```bash
+   uv run python -m src.train_main --config-name hot3d \
+     data.hot3d.clips_root=/path/to/hot3d-clips \
+     data.hot3d.depth_cache_dir=/path/to/hot3d-clips/depth_cache_pinhole \
+     data.hot3d.object_library=/path/to/hot3d-clips/object_models_eval
+   ```
+
+   Evaluate a checkpoint you trained with the same config: `uv run python -m src.eval_main --config-name hot3d eval.ckpt=/path/to/best.pt`. `object_library` is optional (it attaches object meshes); use `data.hot3d.split=test` for the test split.
+
 ## Repository structure
 
 ```
@@ -120,7 +149,7 @@ src/
 ├── geom/              # SE(3) ops, 6-D rotation, pose canonicalization
 ├── dist/              # DDP / FSDP launch
 └── utils/             # config adapter, normalization, logging
-conf/                  # Hydra configs (epic.yaml [primary], default.yaml, epic_eval.yaml)
+conf/                  # Hydra configs (epic.yaml [primary], default.yaml, epic_eval.yaml, hot3d.yaml)
 scripts/               # setup.sh, submit.sh, preprocessing utilities
 ```
 

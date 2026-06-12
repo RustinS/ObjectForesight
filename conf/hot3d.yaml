@@ -1,0 +1,18 @@
+# Preset for training/eval on HOT3D-Clips (egocentric Aria sequences with
+# motion-capture ground-truth object poses). Inherits the EPIC DiT model and
+# training setup and overrides only the HOT3D-specific data settings. Point the
+# data.hot3d.* paths at your HOT3D-Clips install (see the README section
+# "Training and evaluation on HOT3D").
+defaults:
+  - epic
+
+data:
+  dataset_name: hot3d
+  frame_skips: 4
+  post_train: true
+
+  hot3d:
+    clips_root: ./hot3d-clips
+    depth_cache_dir: ./hot3d-clips/depth_cache_pinhole
+    object_library: ./hot3d-clips/object_models_eval
+    split: train
