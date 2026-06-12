@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import os
+
+import numpy as np
 from typing import Any, Dict, List, Tuple
 
 from ..dist.distrib import is_rank0
@@ -93,6 +95,16 @@ def list_pose_txts(obj_dir: str) -> List[str]:
 # ============================================================================
 
 
+def pose_index(obj_dir):
+    """(frame_ids, pose_txts) for an object, preferring consolidated foundationpose10/poses.npz."""
+    _npz = os.path.join(obj_dir, "foundationpose10", "poses.npz")
+    if os.path.isfile(_npz):
+        with np.load(_npz) as z:
+            return [int(x) for x in z["frame_ids"]], []
+    txts = list_pose_txts(obj_dir)
+    return [_pose_txt_key(t) for t in txts], txts
+
+
 def scan_dataset(
     dataset_root: str,
     H: int,
@@ -124,8 +136,8 @@ def scan_dataset(
         for odir in list_object_dirs(vdir):
             oid, oname = parse_object_id_name(odir)
             mesh = mesh_glb_path(odir)
-            pose_txts = list_pose_txts(odir)
-            n = len(pose_txts)
+            frame_ids, pose_txts = pose_index(odir)
+            n = len(frame_ids)
             total_frames += n
 
             if n == 0:
@@ -145,6 +157,7 @@ def scan_dataset(
                     "object_dir": odir,
                     "mesh_path": mesh,
                     "pose_txts": pose_txts,
+                    "frame_ids": frame_ids,
                     "n_frames": n,
                 }
             )

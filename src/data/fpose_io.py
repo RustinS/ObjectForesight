@@ -80,6 +80,10 @@ def _frame_id_from_path(p: str) -> int:
 def load_object_poses(ob_in_cam_dir: str, verbose: bool = False) -> Dict[str, np.ndarray]:
     """Read FoundationPose ob_in_cam/*.txt and return frame_ids (T,) and T_c_o (T,4,4)."""
     empty = {"frame_ids": np.zeros((0,), dtype=np.int32), "T_c_o": np.zeros((0, 4, 4), dtype=np.float32)}
+    _npz = os.path.join(os.path.dirname(ob_in_cam_dir), "poses.npz")
+    if os.path.isfile(_npz):
+        with np.load(_npz) as z:
+            return {"frame_ids": z["frame_ids"].astype(np.int32), "T_c_o": z["T_c_o"].astype(np.float32)}
     if not os.path.isdir(ob_in_cam_dir):
         return empty
 
@@ -108,5 +112,10 @@ def read_raw_pose_for_frame(ob_in_cam_dir: str, frame_id: int) -> Optional[np.nd
     """Read a single raw FP pose 4x4 (no adapter) for a frame id if exists."""
     p = os.path.join(ob_in_cam_dir, f"{int(frame_id)}.txt")
     if not os.path.exists(p):
+        _npz = os.path.join(os.path.dirname(ob_in_cam_dir), "poses.npz")
+        if os.path.isfile(_npz):
+            with np.load(_npz) as z:
+                _i = np.where(z["frame_ids"] == int(frame_id))[0]
+                return z["T_c_o"][int(_i[0])].astype(np.float32) if len(_i) else None
         return None
     return _read_pose_txt(p, raw=True)

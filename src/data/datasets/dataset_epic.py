@@ -582,7 +582,7 @@ class SceneSequenceDataset(Dataset):
             Tlen = self._video_len[vid]
             pose_txts = rec["pose_txts"]
             init_map = self._ensure_init_map(rec["object_dir"])
-            fids_all = [_stem_to_fid(p) for p in pose_txts]
+            fids_all = rec.get("frame_ids") or [_stem_to_fid(p) for p in pose_txts]
             fids = [k for k in fids_all if 0 <= k < Tlen]
             if len(fids) < len(fids_all) and not self._obj_warned_mismatch.get(rec["object_dir"], False):
                 print(f"[yellow]mismatch[/yellow] {vid}/{rec['object_id']}_{rec['object_name']} • spatrack={Tlen} • obj={len(fids_all)} • using intersection={len(fids)}")

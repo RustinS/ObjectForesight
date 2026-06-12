@@ -62,7 +62,8 @@ def spot_check_index(index: list[dict], n_samples: int = 5) -> bool:
             if not os.path.exists(rec.get(key, "")):
                 return False
         pose_txts = rec.get("pose_txts", [])
-        if not pose_txts or not os.path.exists(pose_txts[0]):
+        _npz = os.path.join(rec.get("object_dir", ""), "foundationpose10", "poses.npz")
+        if not os.path.exists(_npz) and (not pose_txts or not os.path.exists(pose_txts[0])):
             return False
     return True
 
@@ -312,11 +313,12 @@ def compute_records_fingerprint(records: list[dict]) -> str:
     total_frames = 0
     for r in records[:: max(1, len(records) // 1024)]:
         pose_txts = r.get("pose_txts") or []
+        _fids = r.get("frame_ids") or []
         total_frames += int(r.get("n_frames", 0))
         h.update(
             f"O{r.get('object_id', '')}{os.path.basename(str(r.get('object_dir', '')))}"
-            f"{r.get('n_frames', 0)}{os.path.basename(pose_txts[0]) if pose_txts else ''}"
-            f"{os.path.basename(pose_txts[-1]) if pose_txts else ''}".encode()
+            f"{r.get('n_frames', 0)}{os.path.basename(pose_txts[0]) if pose_txts else (_fids[0] if _fids else '')}"
+            f"{os.path.basename(pose_txts[-1]) if pose_txts else (_fids[-1] if _fids else '')}".encode()
         )
     h.update(str(total_frames).encode())
     return h.hexdigest()
