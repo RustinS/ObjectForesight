@@ -66,6 +66,8 @@ huggingface-cli download raivn/ObjectForesight-EPIC-DiT --local-dir checkpoints/
 uv run python -m src.eval_main --config-name epic_eval eval.ckpt=checkpoints/of-epic-dit/best.pt
 ```
 
+The HOT3D model (fs=4) is at [`raivn/ObjectForesight-HOT3D-DiT`](https://huggingface.co/raivn/ObjectForesight-HOT3D-DiT); see [Training and evaluation on HOT3D](#training-and-evaluation-on-hot3d).
+
 ## Data
 
 The extracted trajectories are released as the gated dataset [`raivn/ObjectForesight-EPIC`](https://huggingface.co/datasets/raivn/ObjectForesight-EPIC):
@@ -111,7 +113,7 @@ uv run python -m src.train_main data.dataset_name=synth data.use_synthetic=true 
 
 ## Training and evaluation on HOT3D
 
-The code also supports HOT3D-Clips (egocentric Aria sequences with motion-capture ground-truth object poses) through the `hot3d` config. No HOT3D checkpoint is released, so you train your own.
+The code also supports HOT3D-Clips (egocentric Aria sequences with motion-capture ground-truth object poses) through the `hot3d` config. The trained HOT3D checkpoint (fs=4) is on Hugging Face: [`raivn/ObjectForesight-HOT3D-DiT`](https://huggingface.co/raivn/ObjectForesight-HOT3D-DiT).
 
 1. Download HOT3D-Clips from [Meta](https://facebookresearch.github.io/hot3d/#download): the per-split clip tars (`train_aria/`, `test_aria/`) and the object models.
 
@@ -136,7 +138,7 @@ The code also supports HOT3D-Clips (egocentric Aria sequences with motion-captur
      data.hot3d.object_library=/path/to/hot3d-clips/object_models_eval
    ```
 
-   Evaluate a checkpoint you trained with the same config: `uv run python -m src.eval_main --config-name hot3d eval.ckpt=/path/to/best.pt`. `object_library` is optional (it attaches object meshes); use `data.hot3d.split=test` for the test split.
+   Evaluate the [released checkpoint](https://huggingface.co/raivn/ObjectForesight-HOT3D-DiT) (or one you trained) with the same config: `uv run python -m src.eval_main --config-name hot3d eval.ckpt=/path/to/best.pt`. `object_library` is optional (it attaches object meshes); use `data.hot3d.split=test` for the test split.
 
 ## Repository structure
 
